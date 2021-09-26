@@ -15,11 +15,12 @@ def gaussian_pyramid(input_image, level):
     Return:
         Gaussian pyramid (list of numpy array)
     """
-
-    # Your code
+    
     # Note that elements in the list must be arranged in descending order in image resolution (from big image to small image).
-    return
-
+    pyramid = [np.array(input_image, dtype='f')]
+    for i in range(level):
+        pyramid.append(utils.down_sampling(pyramid[-1]))
+    return pyramid
 
 def laplacian_pyramid(gaussian_pyramid):
     """
@@ -30,9 +31,12 @@ def laplacian_pyramid(gaussian_pyramid):
         laplacian pyramid (list of numpy array)
     """
 
-    # Your code
-    # Note that elements in the list must be arranged in descending order in image resolution (from big image to small image).
-    return
+    # Note that elements in the list must be arranged in descending order in image resolution (from big image to small image).    
+    pyramid = []
+    for i in range(len(gaussian_pyramid)-1):
+        pyramid.append(utils.safe_subtract(gaussian_pyramid[i], utils.up_sampling(gaussian_pyramid[i+1])))
+    pyramid.append(gaussian_pyramid[-1])
+    return pyramid
 
 def blend_images(image1, image2, mask, level):
     """
@@ -44,8 +48,21 @@ def blend_images(image1, image2, mask, level):
     Return:
         blended image (numpy array)
     """
-    # Your code
-    return
+    M = gaussian_pyramid(mask, level)
+    
+    G1 = gaussian_pyramid(image1, level)
+    G2 = gaussian_pyramid(image2, level)
+    
+    L1 = laplacian_pyramid(G1)
+    L2 = laplacian_pyramid(G2)
+    
+    L = [utils.safe_add((1-m/255)*l1, m/255*l2) for (m, l1, l2) in zip(M, L1, L2)]
+    
+    output_image = L[-1]
+    for l in reversed(L[:-1]):
+        output_image = utils.safe_add(l, utils.up_sampling(output_image))
+    
+    return output_image
 
 
 if __name__ == '__main__':
@@ -58,15 +75,13 @@ if __name__ == '__main__':
         os.makedirs(logdir)
 
     level = 3
-
-
     plt.figure()
     plt.imshow(Image.open(os.path.join('images', 'direct_concat.jpeg')))
     plt.axis('off')
     plt.savefig(os.path.join(logdir, 'direct.jpeg'))
-    plt.show()
+    # plt.show()
 
-    ret = gaussian_pyramid(hand, level)
+    ret = gaussian_pyramid(flame, level)
     if ret is not None:
         plt.figure()
         for i in range(len(ret)):
@@ -74,7 +89,7 @@ if __name__ == '__main__':
             plt.imshow(ret[i].astype(np.uint8))
             plt.axis('off')
         plt.savefig(os.path.join(logdir, 'gaussian_pyramid.jpeg'))
-        plt.show()
+        # plt.show()
 
         ret = laplacian_pyramid(ret)
         if ret is not None:
@@ -84,7 +99,7 @@ if __name__ == '__main__':
                 plt.imshow(ret[i].astype(np.uint8))
                 plt.axis('off')
             plt.savefig(os.path.join(logdir, 'laplacian_pyramid.jpeg'))
-            plt.show()
+            # plt.show()
 
     ret = blend_images(hand, flame, mask, level)
     if ret is not None:
@@ -92,4 +107,4 @@ if __name__ == '__main__':
         plt.imshow(ret.astype(np.uint8))
         plt.axis('off')
         plt.savefig(os.path.join(logdir, 'blended.jpeg'))
-        plt.show()
+        # plt.show()
