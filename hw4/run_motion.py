@@ -11,28 +11,19 @@ def lucas_kanade_affine(img1, img2, p, Gx, Gy):
 
     converging_rate = 100
     
-    W = p.reshape(3,2).transpose() + np.array([[1,0,0],[0,1,0]])
+    W = p.reshape(3, 2).transpose() + np.array([[1, 0, 0], [0, 1, 0]])
     h, w = img2.shape
 
     img2_warp = np.zeros((h, w))
-    Gx_warp   = np.zeros((h, w))
-    Gy_warp   = np.zeros((h, w))
-    
     img2_spline = RectBivariateSpline(np.arange(h), np.arange(w), img2)
-    Gx_spline   = RectBivariateSpline(np.arange(h), np.arange(w), Gx)
-    Gy_spline   = RectBivariateSpline(np.arange(h), np.arange(w), Gy)
     
     for i in range(h):
         for j in range(w):
             x, y = np.dot(W, np.array([j, i, 1]))
             if (0 <= x < w) and (0 <= y < h):
                 img2_warp[i, j] = img2_spline.ev(y, x)
-                Gx_warp[i, j]   =   Gx_spline.ev(y, x)
-                Gy_warp[i, j]   =   Gy_spline.ev(y, x)
             else:
                 img2_warp[i, j] = img1[i, j]
-                Gx_warp[i, j]   = 0
-                Gy_warp[i, j]   = 0
                 
     error_image = (img1 - img2_warp).reshape(-1, 1)
     
@@ -59,30 +50,31 @@ def subtract_dominant_motion(img1, img2):
     ### START CODE HERE ###
     # [Caution] From now on, you can only use numpy and 
     # RectBivariateSpline. Never use OpenCV.
+    
     p = np.zeros(6)
     epsilon = 1.0
     
     while True:
         dp = lucas_kanade_affine(img1, img2, p, Gx, Gy)
         p += dp
-        if (np.linalg.norm(dp) < epsilon):
+        if np.linalg.norm(dp) < epsilon:
             break
             
-    W = p.reshape(3,2).transpose() + np.array([[1,0,0],[0,1,0]])
+    W = p.reshape(3, 2).transpose() + np.array([[1, 0, 0], [0, 1, 0]])
 
     h, w = img2.shape
+    img2_warp = np.zeros((h, w))
     img2_spline = RectBivariateSpline(np.arange(h), np.arange(w), img2)
     
-    img_warp = np.zeros((h, w))
     for i in range(h):
         for j in range(w):
             x, y = np.dot(W, np.array([j, i, 1]))
             if (0 <= x < w) and (0 <= y < h):
-                img_warp[i, j] = img2_spline.ev(y, x)
+                img2_warp[i, j] = img2_spline.ev(y, x)
             else:
-                img_warp[i, j] = img1[i, j]
+                img2_warp[i, j] = img1[i, j]
 
-    moving_image = np.abs(img1 - img_warp)
+    moving_image = np.abs(img1 - img2_warp)
     
     th_hi = 0.2 * 256 # you can modify this
     th_lo = 0.15 * 256 # you can modify this
